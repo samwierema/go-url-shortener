@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
@@ -22,8 +23,7 @@ func main() {
 	dsn := viper.GetString("mysql_user") + ":" + viper.GetString("mysql_password") + "@tcp(" + viper.GetString("mysql_host") + ":3306)/" + viper.GetString("mysql_database") + "?collation=utf8mb4_unicode_ci&parseTime=true"
 	db, err = sql.Open("mysql", dsn)
 	if (err != nil) {
-		// HANDLE IT!
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
 	defer db.Close()
