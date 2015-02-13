@@ -2,45 +2,16 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"net/http"
 	"github.com/spf13/viper"
 	"github.com/gorilla/mux"
 )
 
-type Config struct {
-	Redirect	string
-}
-
-func (c *Config) Init() {
+func main() {
+	// Instantiate the configuration
 	viper.SetConfigName("config")
 	viper.AddConfigPath("$HOME/.go-url-shortener")
 	viper.ReadInConfig()
-
-	err := viper.Marshal(c)
-	if (err != nil) {
-		// Do proper error handling here
-		fmt.Println(err)
-	}
-}
-
-func (c *Config) Get(k string) (string, error) {
-	// Test if the field we're requesting exists in the Config struct
-	r := reflect.ValueOf(c)
-	f := reflect.Indirect(r).FieldByName(k)
-	if (!f.IsValid()) {
-		return "", fmt.Errorf("No such field: %s in Config", k)
-	}
-
-	// All is OK! Let's return the value as a string
-	return f.String(), nil
-}
-
-var c Config
-
-func main() {
-	// Instantiate the configuration
-	c.Init()
 
 	// Instantiate the mux router
 	r := mux.NewRouter()
@@ -63,13 +34,12 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the redirect URL out of the Config
-	redirect, err := c.Get("Redirect")
-	if (err != nil) {
+	// Get the redirect URL out of the config
+	if (!viper.IsSet("Redirect")) {
 		// HANDLE IT!
-		fmt.Println("ERRORORORORORO")
+		fmt.Println("ERRORORORO")
 	}
 
 	// Yay! Let's redirect ALL THE THINGS!!
-	http.Redirect(w, r, redirect, 301)
+	http.Redirect(w, r, viper.GetString("Redirect"), 301)
 }
