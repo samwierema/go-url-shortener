@@ -35,11 +35,11 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the redirect URL out of the config
-	if (!viper.IsSet("Redirect")) {
+	if (!viper.IsSet("default_url")) {
 		// HANDLE IT!
 		fmt.Println("ERRORORORO")
 	}
 
 	// Yay! Let's redirect ALL THE THINGS!!
-	http.Redirect(w, r, viper.GetString("Redirect"), 301)
+	http.Redirect(w, r, viper.GetString("default_url"), 301)
 }
