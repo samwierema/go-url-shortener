@@ -45,45 +45,50 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Check if a slug exists
 	vars := mux.Vars(r)
 	slug, ok := vars["slug"];
 	if (!ok) {
-		// HANDLE IT! (a 404?)
-		fmt.Println("OMGWTFBBQ")
+		http.Error(w, "", http.StatusBadRequest)
+		return
 	}
-	fmt.Println(slug)
 
-	// NOW FOR SOME DATABASE MAGIC
+	// 2. Check if the slug exists in the database
 	var url string
 	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&url)
 	if (err != nil) {
-		// HANDLE IT! (a 404?)
-		fmt.Println(err)
+		http.NotFound(w, r)
+		return
 	}
 
-	// It exists! Now update the no. of hits
+	// 3. If the slug (and thus the URL) exist, update the hit counter
 	stmt, err := db.Prepare("UPDATE `redirect` SET `hits` = `hits` + 1 WHERE `slug` = ?")
 	if (err != nil) {
-		// HANDLE IT! (a 404?)
-		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	res, err := stmt.Exec(slug)
+	_, err = stmt.Exec(slug)
 	if (err != nil) {
-		// HANDLE IT! (a 404?)
-		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	http.Redirect(w, r, url, 301)
+	// 4. Finally, redirect the user to the URL
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the redirect URL out of the config
+	// 1. Get the redirect URL out of the config
 	if (!viper.IsSet("default_url")) {
-		// HANDLE IT!
-		fmt.Println("ERRORORORO")
+		// The reason for using StatusNotFound here instead of StatusInternalServerError
+		// is because this is a catch-all function. You could come here via various
+		// ways, so showing a StatusNotFound is friendlier than saying there's an
+		// error (i.e. the configuration is missing)
+		http.NotFound(w, r)
+		return
 	}
 
-	// Yay! Let's redirect ALL THE THINGS!!
-	http.Redirect(w, r, viper.GetString("default_url"), 301)
+	// 2. If it exists, redirect the user to it
+	http.Redirect(w, r, viper.GetString("default_url"), http.StatusMovedPermanently)
 }
