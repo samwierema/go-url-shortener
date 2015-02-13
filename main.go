@@ -55,17 +55,26 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 	// NOW FOR SOME DATABASE MAGIC
 	var url string
-	err := db.QueryRow("SELECT `url` FROM redirect WHERE slug = ?", slug).Scan(&url)
+	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&url)
+	if (err != nil) {
+		// HANDLE IT! (a 404?)
+		fmt.Println(err)
+	}
+
+	// It exists! Now update the no. of hits
+	stmt, err := db.Prepare("UPDATE `redirect` SET `hits` = `hits` + 1 WHERE `slug` = ?")
+	if (err != nil) {
+		// HANDLE IT! (a 404?)
+		fmt.Println(err)
+	}
+
+	res, err := stmt.Exec(slug)
 	if (err != nil) {
 		// HANDLE IT! (a 404?)
 		fmt.Println(err)
 	}
 
 	http.Redirect(w, r, url, 301)
-
-	// If a route could not be matched, redirect to homepage
-	// This should maybe be a 404?
-	// CatchAllHandler(w, r);
 }
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
