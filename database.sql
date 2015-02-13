@@ -7,6 +7,6 @@ CREATE TABLE `redirect` (
 	`date` datetime NOT NULL,
 	`hits` bigint(20) NOT NULL default '0',
 	PRIMARY KEY (`slug`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Used for the URL shortener';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Used for the URL shortener';
 
 INSERT INTO `redirect` VALUES ('g', 'https://github.com/samwierema/go-url-shortener', NOW(), 1);
