@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"math/rand"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
@@ -41,7 +42,54 @@ func main() {
 
 
 func ShortenHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("s!"))
+	// Check if the url parameter has been sent along (and is not empty)
+	url := r.URL.Query().Get("url")
+	if (url == "") {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	// Get the short URL out of the config
+	if (!viper.IsSet("short_url")) {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+	short_url := viper.GetString("short_url")
+
+	// Check if url already exists in the database
+	var slug string
+	err := db.QueryRow("SELECT `slug` FROM `redirect` WHERE `url` = ?", url).Scan(&slug)
+	if (err == nil) {
+		// The URL already exists! Return the shortened URL.
+		w.Write([]byte(short_url + "/" + slug))
+		return;
+	}
+
+	// It doesn't exist! Generate a new slug for it
+	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
+	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
+	s := make([]rune, 6)
+	for i := range s {
+		s[i] = chars[rand.Intn(len(chars))]
+	}
+
+	slug = string(s)
+
+	// Insert it into the database
+	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
+	if (err != nil) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = stmt.Exec(slug, url, 0)
+	if (err != nil) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated);
+	w.Write([]byte(short_url + "/" + slug))
 }
 
 func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
