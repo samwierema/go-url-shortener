@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"math/rand"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/spf13/viper"
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
+	"log"
+	"math/rand"
+	"net/http"
 )
 
 var db *sql.DB
@@ -22,7 +22,7 @@ func main() {
 	var err error
 	dsn := viper.GetString("mysql_user") + ":" + viper.GetString("mysql_password") + "@tcp(" + viper.GetString("mysql_host") + ":3306)/" + viper.GetString("mysql_database") + "?collation=utf8mb4_unicode_ci&parseTime=true"
 	db, err = sql.Open("mysql", dsn)
-	if (err != nil) {
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -39,17 +39,16 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-
 func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the url parameter has been sent along (and is not empty)
 	url := r.URL.Query().Get("url")
-	if (url == "") {
+	if url == "" {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
 	// Get the short URL out of the config
-	if (!viper.IsSet("short_url")) {
+	if !viper.IsSet("short_url") {
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -58,10 +57,10 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if url already exists in the database
 	var slug string
 	err := db.QueryRow("SELECT `slug` FROM `redirect` WHERE `url` = ?", url).Scan(&slug)
-	if (err == nil) {
+	if err == nil {
 		// The URL already exists! Return the shortened URL.
 		w.Write([]byte(short_url + "/" + slug))
-		return;
+		return
 	}
 
 	// It doesn't exist! Generate a new slug for it
@@ -76,26 +75,26 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Insert it into the database
 	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	_, err = stmt.Exec(slug, url, 0)
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated);
+	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(short_url + "/" + slug))
 }
 
 func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Check if a slug exists
 	vars := mux.Vars(r)
-	slug, ok := vars["slug"];
-	if (!ok) {
+	slug, ok := vars["slug"]
+	if !ok {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -103,20 +102,20 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// 2. Check if the slug exists in the database
 	var url string
 	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&url)
-	if (err != nil) {
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
 	// 3. If the slug (and thus the URL) exist, update the hit counter
 	stmt, err := db.Prepare("UPDATE `redirect` SET `hits` = `hits` + 1 WHERE `slug` = ?")
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	_, err = stmt.Exec(slug)
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -127,7 +126,7 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Get the redirect URL out of the config
-	if (!viper.IsSet("default_url")) {
+	if !viper.IsSet("default_url") {
 		// The reason for using StatusNotFound here instead of StatusInternalServerError
 		// is because this is a catch-all function. You could come here via various
 		// ways, so showing a StatusNotFound is friendlier than saying there's an
