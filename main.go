@@ -39,6 +39,9 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
+// Shortens a given URL passed through in the request.
+// If the URL has already been shortened, returns the existing URL.
+// Writes the short URL in plain text to w.
 func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the url parameter has been sent along (and is not empty)
 	url := r.URL.Query().Get("url")
@@ -90,6 +93,8 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(short_url + "/" + slug))
 }
 
+// Handles a requested short URL.
+// Redirects with a 301 header if found.
 func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Check if a slug exists
 	vars := mux.Vars(r)
@@ -124,6 +129,8 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
 
+// Catches all other requests to the short URL domain.
+// If a default URL exists in the config redirect to it.
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Get the redirect URL out of the config
 	if !viper.IsSet("default_url") {
