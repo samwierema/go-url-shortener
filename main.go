@@ -15,7 +15,7 @@ var db *sql.DB
 func main() {
 	// Instantiate the configuration
 	viper.SetConfigName("config")
-	viper.AddConfigPath("$HOME/.go-url-shortener")
+	viper.AddConfigPath("/path/to/.go-url-shortener")
 	viper.ReadInConfig()
 
 	// Instantiate the database
