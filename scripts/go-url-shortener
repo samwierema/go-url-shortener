@@ -1,0 +1,65 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:				go-url-shortener
+# Required-Start:		$remote_fs $syslog
+# Required-Stop:		$remote_fs $syslog
+# Should-Start:			$network
+# Should-Stop:			$network
+# Default-Start:		2 3 4 5
+# Default-Stop:			0 1 6
+# Short-Description:	Go URL Shortener
+# Description:			Starts the Go URL Shortener service in the background
+### END INIT INFO
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+GOPATH="/path/to/your/go/root"
+
+GUS="$GOPATH/bin/go-url-shortener"
+GUS_NAME="go-url-shortener"
+GUS_PID="/var/run/$GUS_NAME.pid"
+GUS_LOG_DIR="/var/log/$GUS_NAME" ; mkdir -p $GUS_LOG_DIR
+GUS_LOG_FILE="$GUS_LOG_DIR/$GUS_NAME.log"
+
+SSD_PARAMS="--quiet --oknodo --pidfile $GUS_PID"
+
+set -e
+test -x $GUS || exit 0
+
+. /lib/lsb/init-functions
+
+case "$1" in
+	start)
+		log_daemon_msg "Starting Go URL Shortener service" "$GUS_NAME" || true
+		if start-stop-daemon --start $SSD_PARAMS --make-pidfile --background --no-close --exec $GUS >> $GUS_LOG_FILE 2>&1; then
+			log_end_msg 0 || true
+		else
+			log_end_msg 1 || true
+		fi
+		;;
+
+	stop)
+		log_daemon_msg "Stopping Go URL Shortener service" "$GUS_NAME" || true
+		if start-stop-daemon --stop --retry 10 $SSD_PARAMS; then
+			log_end_msg 0 || true
+		else
+			log_end_msg 1 || true
+		fi
+		;;
+
+	restart)
+		$0 stop
+		$0 start
+		;;
+
+	status)
+		status_of_proc -p $GUS_PID $GUS $GUS_NAME && exit 0 || exit $?
+		;;
+
+	*)
+		log_action_msg "Usage: /etc/init.d/$GUS_NAME {start|stop|restart|status}" || true
+		exit 1
+esac
+
+exit 0
