@@ -8,11 +8,14 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
 var db *sql.DB
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	// Instantiate the configuration
 	viper.SetConfigName("config")
 	viper.AddConfigPath("/path/to/.go-url-shortener")
@@ -66,15 +69,17 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// It doesn't exist! Generate a new slug for it
-	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
-	s := make([]rune, 6)
-	for i := range s {
-		s[i] = chars[rand.Intn(len(chars))]
+	// generate a slug and validate it doesn't
+	// exist until we find a valid one.
+	var exists = true
+	for exists == true {
+		slug = generateSlug()
+		err, exists = slugExists(slug)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
-
-	slug = string(s)
 
 	// Insert it into the database
 	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
@@ -91,6 +96,29 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(short_url + "/" + slug))
+}
+
+// generateSlug will generate a random slug to be used as shorten link.
+func generateSlug() string {
+	// It doesn't exist! Generate a new slug for it
+	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
+	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
+	s := make([]rune, 6)
+	for i := range s {
+		s[i] = chars[rand.Intn(len(chars))]
+	}
+
+	return string(s)
+}
+
+// slugExists will check whether the slug already exists in the database
+func slugExists(slug string) (e error, exists bool) {
+	err := db.QueryRow("SELECT EXISTS(SELECT * FROM `redirect` WHERE `slug` = ?)", slug).Scan(&exists)
+	if err != nil {
+		return err, false
+	}
+
+	return nil, exists
 }
 
 // Handles a requested short URL.
