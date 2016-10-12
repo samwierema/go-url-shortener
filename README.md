@@ -28,7 +28,6 @@ You will find an example init script in the `scripts` folder. To use, you **must
 
 ## To-do
 * Add tests
-* Add checks for duplicate slugs (i.e. make creation of slugs better)
 
 ## Author
 * [Sam Wierema](http://wiere.ma)
